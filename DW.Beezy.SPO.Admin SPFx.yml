@@ -1,0 +1,50 @@
+trigger:
+  branches:
+    include:
+    - master
+variables:
+- group: 'SPFx Deploy'
+- name: workingDirectory
+  value: '$(System.DefaultWorkingDirectory)/DW.Beezy.SPO.Admin'
+- name: 'spfxPackage'
+  value: 'dw-beezy-spo-admin.sppkg'
+stages:
+- stage: Build
+  displayName: Build stage
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: 'Ubuntu-latest'
+    steps:
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '14.x'
+      displayName: 'Install Node.js'
+    - task: Npm@1
+      inputs:
+        workingDir: '$(workingDirectory)'
+        command: 'install'
+      displayName: 'Npm Install'
+    - task: CmdLine@2
+      displayName: 'Gulp Build and Package Solution'
+      inputs:
+        script: |
+          gulp clean
+          gulp bundle --ship
+          gulp package-solution --ship
+          dir
+        workingDirectory: '$(workingDirectory)'
+    - task: CopyFiles@2
+      displayName: 'Copy SPFx Package'
+      inputs:
+        SourceFolder: '$(workingDirectory)/sharepoint/solution'
+        Contents: '$(spfxPackage)'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)/drop'
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Build Artifacts'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)/drop'
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
+
